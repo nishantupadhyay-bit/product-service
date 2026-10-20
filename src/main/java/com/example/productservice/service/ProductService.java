@@ -10,7 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.productservice.exception.ProductNotFoundException;
 import java.util.List;
-
+import com.example.productservice.exception.InsufficientStockException;
+import com.example.productservice.exception.InvalidStockQuantityException;
 
 @Service
 public class ProductService {
@@ -66,4 +67,50 @@ public class ProductService {
 
         return updatedProduct;
     }
+
+
+
+    @Transactional
+    public ProductEntity reserveStock(Long id, int quantity) {
+        if (quantity <= 0) {
+            throw new InvalidStockQuantityException(
+                    "Reservation quantity must be greater than zero"
+            );
+        }
+
+        ProductEntity product = productRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        if (product.getStockQuantity() < quantity) {
+            throw new InsufficientStockException(id);
+        }
+
+        product.setStockQuantity(product.getStockQuantity() - quantity);
+
+        ProductEntity updatedProduct = productRepository.save(product);
+        logger.info("Stock reserved for product ID: {}", id);
+
+        return updatedProduct;
+    }
+
+    @Transactional
+    public ProductEntity releaseStock(Long id, int quantity) {
+        if (quantity <= 0) {
+            throw new InvalidStockQuantityException(
+                    "Release quantity must be greater than zero"
+            );
+        }
+
+        ProductEntity product = productRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ProductNotFoundException(id));
+
+        product.setStockQuantity(product.getStockQuantity() + quantity);
+
+        ProductEntity updatedProduct = productRepository.save(product);
+        logger.info("Stock released for product ID: {}", id);
+
+        return updatedProduct;
+    }
+
+
 }
